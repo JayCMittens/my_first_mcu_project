@@ -1,3 +1,6 @@
+ENTRY(reset_handler) /* Define the entry point of the program */
+
+
 /* Define memory regions */
 MEMORY
 {
@@ -8,6 +11,9 @@ MEMORY
   /* BATTRAM (rw) : ORIGIN = 0x40024000, LENGTH = 4K  Backup SRAM */
 }
 
+_start_of_stack = ORIGIN(RAM) + LENGTH(RAM); /* Define the start of the stack at the end of RAM */
+_min_stack_size = 0x400; /* Define minimum stack size (1KB) */
+_min_heap_size = 0x400;  /* Define minimum heap size (1KB) */
 
 /* Define sections and their placement in memory 
 * Sections define how different parts of the program are organized in memory.
@@ -17,37 +23,53 @@ MEMORY
 * The ELF file format uses these sections to organize the program's code and data.
 */
 SECTIONS {
+    /* collect all executable code */
   .text :
   {
-    /* collect all executable code */
+    /* . = 0x08000000;  Set starting address of .text section */
+    . = ALIGN(4); /* align to 4-byte boundary */
     *(.text)
-    *(.text.*)
+    *(.text.*) /* . --> 0x0800_0021 */
+    . = ALIGN(4); /* --> 0x0800_0024 */
   } > FLASH
 
+  /* Constant data will go into FLASH */
   .rodata : {
-    /* Constant data will go into FLASH */
+    . = ALIGN(4); /* align to 4-byte boundary */
     *(.rodata)
     *(.rodata.*)
+    . = ALIGN(4);
   } > FLASH
 
   /* collect all initialized data */
   .data : {
-    _sidata = LOADDADDR(.data); /* load address of .data section */
+    _sidata = LOADADDR(.data); /* load address of .data section */
+    . = ALIGN(4); /* align to 4-byte boundary */
     _sdata = .; /* start address of .data section */
     *(.data)
     *(.data.*)
+    . = ALIGN(4);
     _edata = .; /* end address of .data section */
 
   } > RAM AT> FLASH /* Initialized data section, loaded from FLASH to RAM */
 
   /* uninitialized data */
   .bss : {
+    . = ALIGN(4); /* align to 4-byte boundary */
     _sbss = .; /* start address of .bss section */
     *(.bss)
     *(.bss.*)
+    . = ALIGN(4);
     _ebss = .; /* end address of .bss section */
   } > RAM
+
+  /* Stack and Heap size check */
+  .ram_usage_check : {
+    . = ALIGN(8);
+    . = . + _min_stack_size; /* ensure enough space for stack */
+    . = . + _min_heap_size;  /* ensure enough space for heap */
+    . = ALIGN(8);
+  } > RAM
+
+
 }
-
-
-/* TODO: Video 54. */
